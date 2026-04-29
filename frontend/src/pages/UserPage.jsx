@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Activity, ShieldCheck, Settings, HelpCircle } from 'lucide-react';
-
+import toast from 'react-hot-toast';
 const UserPage = () => {
   const { user } = useAuth();
 
