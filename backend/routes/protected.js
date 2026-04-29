@@ -58,17 +58,6 @@ router.get('/user/dashboard', authenticateToken, authorizeRoles('User', 'Manager
   res.json({ message: 'User Dashboard - Your personal workspace', role: req.user.role });
 });
 
-// Delete user (Admin only)
-router.delete('/admin/users/:id', authenticateToken, authorizeRoles('Admin'), (req, res) => {
-  const { id } = req.params;
-  if (parseInt(id) === req.user.userId) {
-    return res.status(400).json({ message: 'You cannot delete your own account' });
-  }
-  const stmt = db.prepare('DELETE FROM users WHERE id = ?');
-  const result = stmt.run(id);
-  if (result.changes === 0) return res.status(404).json({ message: 'User not found' });
-  logEvent(req.user.userId, req.user.email, 'ADMIN_DELETE_USER', req, `Deleted user ID ${id}`);
-  res.json({ message: 'User deleted successfully' });
-});
+
 
 module.exports = router;
