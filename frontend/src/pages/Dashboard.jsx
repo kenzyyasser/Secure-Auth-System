@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Key, User, ShieldCheck, Clock } from 'lucide-react';
 import api from '../utils/api';
-import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user, token } = useAuth();
