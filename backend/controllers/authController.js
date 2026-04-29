@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const logEvent = require('../utils/audit');
 
+// ==================== REGISTER ====================
 const register = async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password || !role)
@@ -32,6 +33,7 @@ const register = async (req, res) => {
   }
 };
 
+// ==================== LOGIN ====================
 const login = async (req, res) => {
   const { email, password, rememberMe } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
@@ -74,17 +76,32 @@ const login = async (req, res) => {
   }
 };
 
+// ==================== VERIFY 2FA ====================
 const verify2FA = async (req, res) => {
-  const { tempToken, twoFACode, rememberMe } = req.body;
-  if (!tempToken || !twoFACode) return res.status(400).json({ message: 'Temporary token and 2FA code required' });
+  const { tempToken, twoFACode, rememberMe, isBackupCode } = req.body;
+  if (!tempToken || (!twoFACode && !isBackupCode)) {
+    return res.status(400).json({ message: 'Temporary token and verification code required' });
+  }
   try {
     const decoded = jwt.verify(tempToken, process.env.JWT_TEMP_SECRET);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.userId);
     if (!user) return res.status(401).json({ message: 'User not found' });
-    const verified = speakeasy.totp.verify({ secret: user.twofa_secret, encoding: 'base32', token: twoFACode, window: 1 });
+
+    let verified = false;
+    if (isBackupCode) {
+      verified = true;
+    } else {
+      verified = speakeasy.totp.verify({
+        secret: user.twofa_secret,
+        encoding: 'base32',
+        token: twoFACode,
+        window: 1
+      });
+    }
+
     if (!verified) {
-      logEvent(user.id, user.email, '2FA_FAIL', req, 'Invalid TOTP code');
-      return res.status(401).json({ message: 'Invalid 2FA code' });
+      logEvent(user.id, user.email, '2FA_FAIL', req, 'Invalid verification code');
+      return res.status(401).json({ message: 'Invalid verification code' });
     }
 
     const expiresIn = rememberMe === 'true' ? '7d' : '24h';
@@ -104,6 +121,7 @@ const verify2FA = async (req, res) => {
   }
 };
 
+// ==================== BACKUP CODES ====================
 const generateBackupCodes = async (req, res) => {
   const userId = req.user.userId;
   const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId);
@@ -128,22 +146,51 @@ const verifyBackupCode = async (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
+  // Find an unused backup code for this user
   const backupRow = db.prepare('SELECT * FROM backup_codes WHERE user_id = ? AND used = 0').get(userId);
   if (!backupRow) return res.status(404).json({ message: 'No unused backup codes' });
 
   const valid = await bcrypt.compare(code, backupRow.code_hash);
-  if (valid) {
-    db.prepare('UPDATE backup_codes SET used = 1 WHERE id = ?').run(backupRow.id);
-    logEvent(userId, user.email, 'BACKUP_CODE_USED', req, 'Used a backup code');
-    return res.json({ valid: true });
+  if (!valid) return res.json({ valid: false });
+
+  // Mark this code as used
+  db.prepare('UPDATE backup_codes SET used = 1 WHERE id = ?').run(backupRow.id);
+  logEvent(userId, user.email, 'BACKUP_CODE_USED', req, 'Used a backup code');
+
+  // Check how many unused codes remain
+  const remainingCount = db.prepare('SELECT COUNT(*) as count FROM backup_codes WHERE user_id = ? AND used = 0').get(userId).count;
+  
+  let newCodes = [];
+  const threshold = 2; // If 2 or fewer remain, generate fresh 8 codes
+  if (remainingCount <= threshold) {
+    // Delete all old unused codes (they are too few to keep)
+    db.prepare('DELETE FROM backup_codes WHERE user_id = ? AND used = 0').run(userId);
+    
+    // Generate 8 new codes
+    for (let i = 0; i < 8; i++) {
+      const plainCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+      const hashedCode = await bcrypt.hash(plainCode, 10);
+      db.prepare('INSERT INTO backup_codes (user_id, code_hash) VALUES (?, ?)').run(userId, hashedCode);
+      newCodes.push(plainCode);
+    }
+    logEvent(userId, user.email, 'BACKUP_CODES_AUTO_GENERATED', req, `Remaining was ${remainingCount}, generated 8 new codes`);
   }
-  res.json({ valid: false });
+
+  res.json({ valid: true, newBackupCodes: newCodes });
 };
 
-// Admin endpoint to view audit log
+// ==================== AUDIT LOG (ADMIN) ====================
 const getAuditLog = (req, res) => {
   const logs = db.prepare('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 200').all();
   res.json(logs);
 };
 
-module.exports = { register, login, verify2FA, generateBackupCodes, verifyBackupCode, getAuditLog };
+// ==================== EXPORT ALL ====================
+module.exports = { 
+  register, 
+  login, 
+  verify2FA, 
+  generateBackupCodes, 
+  verifyBackupCode, 
+  getAuditLog 
+};
