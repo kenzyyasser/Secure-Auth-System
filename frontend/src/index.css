@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark mode – premium micro‑texture */
+body {
+  background: #1a1025;
+  background-image: 
+    radial-gradient(circle at 1px 1px, rgba(216, 180, 254, 0.15) 1px, transparent 1px),
+    repeating-linear-gradient(45deg, 
+      transparent 0px, transparent 6px, 
+      rgba(216, 180, 254, 0.03) 6px, 
+      rgba(168, 85, 247, 0.02) 7px, 
+      transparent 7px, transparent 12px);
+  background-size: 40px 40px, 24px 24px;
+  background-attachment: fixed;
+  color: #f5f3ff;
+  transition: background 0.3s, color 0.3s;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Radial vignette */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.3) 90%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Light mode */
+.light body {
+  background: #f3e8ff;
+  background-image: 
+    radial-gradient(circle at 1px 1px, rgba(126, 34, 206, 0.12) 1px, transparent 1px),
+    repeating-linear-gradient(45deg, 
+      transparent 0px, transparent 6px, 
+      rgba(126, 34, 206, 0.04) 6px, 
+      rgba(107, 33, 168, 0.03) 7px, 
+      transparent 7px, transparent 12px);
+  background-size: 40px 40px, 24px 24px;
+  color: #3b0764;
+}
+.light body::before {
+  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.05) 90%);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Glass card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 1rem;
+  border: 1px solid rgba(216, 180, 254, 0.3);
+  transition: all 0.3s;
+}
+.glass-card:hover {
+  border-color: rgba(216, 180, 254, 0.7);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.25);
+}
+.light .glass-card {
+  background: rgba(216, 180, 254, 0.2);
+  border-color: rgba(168, 85, 247, 0.35);
+}
+.light .glass-card:hover {
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.15);
+}
+
+/* 
+   FIXED INPUT STYLES – proper spacing for icons
+   Use with relative container and absolute positioned icon
+*/
+.auth-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem; /* left padding for icon */
+  border-radius: 0.5rem;
+  background: rgba(20, 15, 35, 0.7);
+  border: 1px solid rgba(216, 180, 254, 0.3);
+  color: #f5f3ff;
+  transition: all 0.2s;
+}
+.auth-input:focus {
+  outline: none;
+  border-color: #d8b4fe;
+  box-shadow: 0 0 0 3px rgba(216, 180, 254, 0.3);
+}
+.light .auth-input {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(126, 34, 206, 0.4);
+  color: #3b0764;
+}
+.light .auth-input::placeholder {
+  color: #6b21a5;
+}
+.light .auth-input:focus {
+  border-color: #c084fc;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+  background: rgba(168, 85, 247, 0.25);
+}
+
+/* Fix icon wrapper – ensure it doesn't overlap text */
+.input-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(216, 180, 254, 0.6);
+  pointer-events: none;
+}
+.light .input-icon {
+  color: rgba(126, 34, 206, 0.6);
+}
+
+/* Buttons */
+.auth-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #d8b4fe, #c084fc);
+  color: #1a1025;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(216, 180, 254, 0.4);
+}
+.auth-button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(216, 180, 254, 0.6);
+}
+.light .auth-button {
+  background: linear-gradient(135deg, #c084fc, #a855f7);
+  color: #2e1065;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+}
+
+.auth-button-secondary {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(216, 180, 254, 0.4);
+  color: #f5f3ff;
+}
+.auth-button-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #d8b4fe;
+}
+.light .auth-button-secondary {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(126, 34, 206, 0.5);
+  color: #3b0764;
+}
+.light .auth-button-secondary:hover {
+  background: rgba(168, 85, 247, 0.3);
+  border-color: #c084fc;
+}
+
+.theme-toggle {
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(216, 180, 254, 0.4);
+  cursor: pointer;
+}
+.theme-toggle:hover {
+  border-color: #d8b4fe;
+}
+.light .theme-toggle {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(126, 34, 206, 0.5);
+}
+.light .theme-toggle:hover {
+  background: rgba(168, 85, 247, 0.35);
+  border-color: #c084fc;
+}
