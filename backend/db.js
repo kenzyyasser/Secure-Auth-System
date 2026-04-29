@@ -38,16 +38,6 @@ db.exec(`
   )
 `);
 
-// Backup codes table
-db.exec(`
-  CREATE TABLE IF NOT EXISTS backup_codes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    code_hash TEXT NOT NULL,
-    used INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  )
-`);
+
 
 module.exports = db;
