@@ -1,74 +1,81 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Sun, Moon, Shield, LayoutDashboard, UserCircle, Users, Briefcase, LogOut, Key, FolderLock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Key, User, ShieldCheck, Clock } from 'lucide-react';
-import api from '../utils/api';
-import toast from 'react-hot-toast';
+import { useTheme } from '../contexts/ThemeContext';
 
-const Dashboard = () => {
-  const { user, token } = useAuth();
-  const [dashboardData, setDashboardData] = useState(null);
+const Navbar = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+  const { darkMode, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const response = await api.get('/dashboard');
-        setDashboardData(response.data);
-      } catch (error) {
-        toast.error('Failed to load dashboard');
-      }
-    };
-    fetchDashboard();
-  }, []);
+  const navItems = [
+    { path: '/dashboard', label: 'Dashboard',     icon: LayoutDashboard, roles: ['Admin', 'Manager', 'User'] },
+    { path: '/profile',   label: 'Profile',       icon: UserCircle,      roles: ['Admin', 'Manager', 'User'] },
+    { path: '/documents', label: 'Documents',     icon: FolderLock,      roles: ['Admin', 'Manager', 'User'] },
+    { path: '/admin',     label: 'Admin Panel',   icon: Shield,          roles: ['Admin'] },
+    { path: '/manager',   label: 'Manager Panel', icon: Briefcase,       roles: ['Manager', 'Admin'] },
+    { path: '/user',      label: 'User Panel',    icon: Users,           roles: ['User', 'Manager', 'Admin'] },
+  ];
 
   return (
-    <div className="container mx-auto px-6 py-12">
-      <div className="animate-slide-up">
-        <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-        <p className="text-gray-400 mb-8">Welcome back, {user?.name}</p>
+    <nav className="sticky top-0 z-50 backdrop-blur-md border-b transition-all duration-300 bg-black/30 border-gray-700">
+      <div className="container mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          <Link to="/dashboard" className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+            AuthShield
+          </Link>
 
-        {/* JWT Token Display */}
-        <div className="glass-card p-6 mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <Key className="text-indigo-400" size={24} />
-            <h2 className="text-xl font-semibold">Your Access Token (JWT)</h2>
-          </div>
-          <div className="bg-black/30 rounded-lg p-3 font-mono text-xs break-all text-gray-300">
-            {token}
-          </div>
-          <p className="text-xs text-gray-500 mt-2">Required for all protected API requests</p>
-        </div>
+          {isAuthenticated && (
+            <div className="flex items-center space-x-6">
+              <div className="hidden md:flex items-center space-x-4">
+                {navItems.map((item) =>
+                  item.roles.includes(user?.role) && (
+                    <Link key={item.path} to={item.path} className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
+                      <item.icon size={18} />
+                      <span>{item.label}</span>
+                    </Link>
+                  )
+                )}
+                
+                {/* 🛡️ زرار الـ Verify الجديد */}
+                <Link 
+                  to="/verification" 
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-violet-600/20 text-violet-300 hover:bg-violet-600/40 hover:text-violet-200 transition-colors border border-violet-500/30"
+                >
+                  <ShieldCheck size={18} />
+                  <span>Verify</span>
+                </Link>
 
-        {/* User Info & Status */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="glass-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <User className="text-indigo-400" size={24} />
-              <h3 className="text-lg font-semibold">User Information</h3>
+                <Link to="/backup-codes" className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
+                  <Key size={18} />
+                  <span>Backup Codes</span>
+                </Link>
+              </div>
+              <div className="flex items-center space-x-4">
+                <button onClick={toggleTheme} className="theme-toggle">
+                  {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+                <span className="text-sm text-gray-300">
+                  <span className="font-medium">{user?.name}</span>
+                  <span className="ml-2 text-indigo-400 text-xs px-2 py-0.5 rounded-full bg-indigo-500/20">{user?.role}</span>
+                </span>
+                <button onClick={logout} className="flex items-center gap-1 bg-indigo-600/80 hover:bg-indigo-600 px-4 py-2 rounded-lg text-sm font-medium transition">
+                  <LogOut size={16} /> Logout
+                </button>
+              </div>
             </div>
-            <div className="space-y-3">
-              <div><span className="text-gray-400">Name:</span> <span className="font-medium">{user?.name}</span></div>
-              <div><span className="text-gray-400">Email:</span> {user?.email}</div>
-              <div><span className="text-gray-400">Role:</span> <span className="text-indigo-400 font-semibold">{user?.role}</span></div>
-              <div><span className="text-gray-400">User ID:</span> {user?.id}</div>
-            </div>
-          </div>
+          )}
 
-          <div className="glass-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <ShieldCheck className="text-green-400" size={24} />
-              <h3 className="text-lg font-semibold">System Status</h3>
+          {!isAuthenticated && (
+            <div className="space-x-4">
+              <Link to="/login" className="text-gray-300 hover:text-white">Login</Link>
+              <Link to="/register" className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg">Register</Link>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Authentication: Active</div>
-              <div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div> 2FA: Enabled</div>
-              <div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div> JWT: Valid</div>
-              <div className="flex items-center gap-2"><div className="w-2 h-2 bg-blue-500 rounded-full"></div> Session: Secure</div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
-    </div>
+    </nav>
   );
 };
 
-export default Dashboard;
+export default Navbar;
