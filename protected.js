@@ -71,4 +71,33 @@ router.delete('/admin/users/:id', authenticateToken, authorizeRoles('Admin'), (r
   res.json({ message: 'User deleted successfully' });
 });
 
+// ==========================================
+// Admin: Change user role (NEW)
+// ==========================================
+router.put('/admin/users/:id/role', authenticateToken, authorizeRoles('Admin'), (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+  
+  // 1. التأكد إن الرتبة اللي مبعوتة صحيحة وموجودة في النظام
+  if (!['Admin', 'Manager', 'User'].includes(role)) {
+    return res.status(400).json({ message: 'Invalid role' });
+  }
+  
+  // 2. حماية: منع الأدمن إنه يغير رتبة نفسه لرتبة أقل (عشان ميفقدش صلاحياته بالغلط)
+  if (parseInt(id) === req.user.userId && role !== 'Admin') {
+     return res.status(400).json({ message: 'You cannot demote yourself' });
+  }
+
+  // 3. تحديث الرتبة في قاعدة البيانات
+  const stmt = db.prepare('UPDATE users SET role = ? WHERE id = ?');
+  const result = stmt.run(role, id);
+  
+  if (result.changes === 0) return res.status(404).json({ message: 'User not found' });
+  
+  // 4. تسجيل الحدث في الـ Audit Log
+  logEvent(req.user.userId, req.user.email, 'ADMIN_CHANGE_ROLE', req, `Changed user ID ${id} role to ${role}`);
+  
+  res.json({ message: 'Role updated successfully' });
+});
+
 module.exports = router;

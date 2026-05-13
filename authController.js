@@ -7,6 +7,9 @@ const db = require('../db');
 const logEvent = require('../utils/audit');
 const { hashToken } = require('../middleware/auth');
 
+// ✅ المسار الصح
+const { sign: hmacSign } = require('../security/signature/hmac/hmacService');
+
 // ==================== PASSWORD POLICY ====================
 const PASSWORD_POLICY = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
 
@@ -44,7 +47,11 @@ const register = async (req, res) => {
     `);
     stmt.run(name, email, hashedPassword, role, secret.base32);
     logEvent(null, email, 'REGISTER_SUCCESS', req, `Role: ${role}`);
-    res.status(201).json({ message: 'User registered successfully', qrCode: qrCodeDataURL, secret: secret.base32 });
+    res.status(201).json({
+      message: 'User registered successfully',
+      qrCode: qrCodeDataURL,
+      secret: secret.base32
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during registration' });
@@ -54,7 +61,8 @@ const register = async (req, res) => {
 // ==================== LOGIN ====================
 const login = async (req, res) => {
   const { email, password, rememberMe } = req.body;
-  if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+  if (!email || !password)
+    return res.status(400).json({ message: 'Email and password required' });
 
   try {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -82,15 +90,19 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    db.prepare('UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?').run(user.id);
+    db.prepare('UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?')
+      .run(user.id);
 
+    // ✅ زودنا الـ expiry لـ 10 دقايق عشان مايخلصش بسرعة
     const tempToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_TEMP_SECRET,
-      { expiresIn: '5m' }
+      { expiresIn: '10m' }
     );
+
     logEvent(user.id, email, 'PASSWORD_VERIFIED', req, 'Awaiting 2FA');
     res.json({ tempToken, message: 'Password verified, please enter 2FA code' });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during login' });
@@ -100,11 +112,26 @@ const login = async (req, res) => {
 // ==================== VERIFY 2FA ====================
 const verify2FA = async (req, res) => {
   const { tempToken, twoFACode, rememberMe, isBackupCode } = req.body;
-  if (!tempToken || (!twoFACode && !isBackupCode)) {
-    return res.status(400).json({ message: 'Temporary token and verification code required' });
+
+  if (!tempToken) {
+    return res.status(400).json({ message: 'Temporary token required' });
   }
+  if (!twoFACode && !isBackupCode) {
+    return res.status(400).json({ message: 'Verification code required' });
+  }
+
   try {
-    const decoded = jwt.verify(tempToken, process.env.JWT_TEMP_SECRET);
+    // ✅ نعمل verify للـ tempToken في try/catch منفصل عشان نديه error واضح
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_TEMP_SECRET);
+    } catch (jwtErr) {
+      console.error('TempToken JWT error:', jwtErr.message);
+      return res.status(403).json({
+        message: 'Session expired. Please login again.'
+      });
+    }
+
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.userId);
     if (!user) return res.status(401).json({ message: 'User not found' });
 
@@ -116,7 +143,7 @@ const verify2FA = async (req, res) => {
         secret: user.twofa_secret,
         encoding: 'base32',
         token: twoFACode,
-        window: 1
+        window: 2
       });
     }
 
@@ -131,14 +158,19 @@ const verify2FA = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn }
     );
+
+    const tokenSignature = hmacSign(accessToken);
+
     logEvent(user.id, user.email, 'LOGIN_SUCCESS', req, `Role: ${user.role}`);
     res.json({
       token: accessToken,
+      signature: tokenSignature,
       user: { id: user.id, name: user.name, email: user.email, role: user.role }
     });
+
   } catch (error) {
-    console.error(error);
-    res.status(403).json({ message: 'Invalid or expired temporary token' });
+    console.error('VERIFY 2FA ERROR:', error);
+    res.status(500).json({ message: 'Server error during 2FA verification' });
   }
 };
 
@@ -231,5 +263,4 @@ module.exports = {
   generateBackupCodes,
   verifyBackupCode,
   getAuditLog
-  // ✅ oauthGitHubCallback شيلناها — Google OAuth في oauthController.js
 };
