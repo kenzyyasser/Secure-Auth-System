@@ -11,6 +11,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+
 const authenticateTempToken = (req, res, next) => {
   const { tempToken } = req.body;
   if (!tempToken) return res.status(401).json({ message: 'Temporary token required' });
