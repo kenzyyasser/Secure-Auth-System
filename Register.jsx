@@ -52,7 +52,7 @@ const Register = () => {
     }
     setLoading(true);
     try {
-      const response = await api.post('/register', formData);
+      const response = await api.post('/auth/register', formData);
       setQrData(response.data.qrCode);
       setShowQR(true);
       toast.success('Registration successful! Scan QR code with Google Authenticator');

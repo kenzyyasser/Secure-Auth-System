@@ -9,7 +9,8 @@ const AdminPage = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({ open: false, userId: null, userName: null, action: null });
+  // أضفنا newRole هنا عشان نحفظ الرتبة الجديدة مؤقتاً لحد ما الأدمن يأكدها
+  const [confirmModal, setConfirmModal] = useState({ open: false, userId: null, userName: null, action: null, newRole: null });
 
   const fetchUsers = async () => {
     try {
@@ -48,10 +49,15 @@ const AdminPage = () => {
     setConfirmModal({ open: true, userId, userName, action: 'unlock' });
   };
 
+  // الدالة الجديدة الخاصة بتغيير الرتبة
+  const handleRoleChangeClick = (userId, userName, newRole) => {
+    setConfirmModal({ open: true, userId, userName, action: 'changeRole', newRole });
+  };
+
   const confirmAction = async () => {
-    const { userId, userName, action } = confirmModal;
+    const { userId, userName, action, newRole } = confirmModal;
     setActionLoading(userId);
-    setConfirmModal({ open: false, userId: null, userName: null, action: null });
+    setConfirmModal({ open: false, userId: null, userName: null, action: null, newRole: null });
 
     try {
       if (action === 'delete') {
@@ -60,22 +66,27 @@ const AdminPage = () => {
       } else if (action === 'unlock') {
         await api.post(`/admin/unlock/${userId}`);
         toast.success(`User "${userName}" unlocked`);
+      } else if (action === 'changeRole') {
+        // نداء الـ API الجديد لتغيير الرتبة
+        await api.put(`/admin/users/${userId}/role`, { role: newRole });
+        toast.success(`User "${userName}" role updated to ${newRole}`);
       }
-      // Refresh current tab data
+      
       if (activeTab === 'users') await fetchUsers();
       else await fetchAuditLogs();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Action failed');
+      if (activeTab === 'users') await fetchUsers(); // بنعمل تحديث عشان نلغي اختيار الرتبة لو حصل خطأ
     } finally {
       setActionLoading(null);
     }
   };
 
   const cancelModal = () => {
-    setConfirmModal({ open: false, userId: null, userName: null, action: null });
+    setConfirmModal({ open: false, userId: null, userName: null, action: null, newRole: null });
+    if (activeTab === 'users') fetchUsers(); // بنعمل تحديث للبيانات لو كنسل عشان الـ UI يرجع لشكله القديم
   };
 
-  // Helper to format date
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
     return new Date(dateStr).toLocaleString();
@@ -94,7 +105,6 @@ const AdminPage = () => {
           </div>
         </div>
 
-        {/* Password Hashing Demo Card */}
         <div className="glass-card p-6 mb-8">
           <div className="flex items-center gap-3 mb-3">
             <Database className="text-green-400" size={24} />
@@ -108,7 +118,6 @@ const AdminPage = () => {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-4 border-b border-gray-700 mb-6">
           <button
             onClick={() => setActiveTab('users')}
@@ -132,7 +141,6 @@ const AdminPage = () => {
           </button>
         </div>
 
-        {/* Content */}
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-indigo-500"></div>
@@ -159,11 +167,21 @@ const AdminPage = () => {
                       <td className="px-4 py-3 font-medium">{user.name}</td>
                       <td className="px-4 py-3 text-sm">{user.email}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          user.role === 'Admin' ? 'bg-indigo-500/20 text-indigo-400' :
-                          user.role === 'Manager' ? 'bg-blue-500/20 text-blue-400' :
-                          'bg-green-500/20 text-green-400'
-                        }`}>{user.role}</span>
+                        {/* هنا استبدلنا النص العادي بقائمة منسدلة لتغيير الرتبة */}
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChangeClick(user.id, user.name, e.target.value)}
+                          disabled={actionLoading === user.id}
+                          className={`bg-black/40 border border-gray-600 rounded-full px-3 py-1 text-xs outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 cursor-pointer ${
+                            user.role === 'Admin' ? 'text-indigo-400' :
+                            user.role === 'Manager' ? 'text-blue-400' :
+                            'text-green-400'
+                          }`}
+                        >
+                          <option value="User" className="bg-gray-900 text-gray-200">User</option>
+                          <option value="Manager" className="bg-gray-900 text-gray-200">Manager</option>
+                          <option value="Admin" className="bg-gray-900 text-gray-200">Admin</option>
+                        </select>
                       </td>
                       <td className="px-4 py-3">
                         {user.locked_until && new Date(user.locked_until) > new Date() ? (
@@ -243,19 +261,26 @@ const AdminPage = () => {
       {/* Confirmation Modal */}
       {confirmModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="glass-card p-6 max-w-md w-full mx-4">
+          <div className="glass-card p-6 max-w-md w-full mx-4 border border-indigo-500/30">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Confirm {confirmModal.action === 'delete' ? 'Delete' : 'Unlock'}</h3>
+              <h3 className="text-xl font-semibold">
+                Confirm {confirmModal.action === 'delete' ? 'Delete' : confirmModal.action === 'unlock' ? 'Unlock' : 'Role Change'}
+              </h3>
               <button onClick={cancelModal} className="text-gray-400 hover:text-white"><X size={20} /></button>
             </div>
             <p className="text-gray-300 mb-6">
               {confirmModal.action === 'delete' 
                 ? `Are you sure you want to delete "${confirmModal.userName}"? This action cannot be undone.`
-                : `Unlock "${confirmModal.userName}"? They will be able to log in again.`}
+                : confirmModal.action === 'unlock'
+                ? `Unlock "${confirmModal.userName}"? They will be able to log in again.`
+                : `Are you sure you want to change "${confirmModal.userName}"'s role to ${confirmModal.newRole}?`}
             </p>
             <div className="flex gap-3">
               <button onClick={cancelModal} className="flex-1 auth-button-secondary">Cancel</button>
-              <button onClick={confirmAction} className={`flex-1 ${confirmModal.action === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white font-semibold py-2 rounded-lg transition`}>
+              <button onClick={confirmAction} className={`flex-1 ${
+                confirmModal.action === 'delete' ? 'bg-red-600 hover:bg-red-700' : 
+                confirmModal.action === 'unlock' ? 'bg-yellow-600 hover:bg-yellow-700' : 
+                'bg-indigo-600 hover:bg-indigo-700'} text-white font-semibold py-2 rounded-lg transition`}>
                 Confirm
               </button>
             </div>
