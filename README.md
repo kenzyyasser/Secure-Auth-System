@@ -1,5 +1,5 @@
 
-```markdown
+
 # 🛡️ Secure Document Vault System
 
 ![Node.js](https://img.shields.io/badge/Node.js-v24+-green?logo=node.js)
@@ -45,22 +45,15 @@ Our team divided the development into 5 strategic phases to ensure a robust secu
 
 ---
 
-## 🛠️ Technology Stack
+### 🛠️ Technology Stack
 * **Frontend:** React.js, Tailwind CSS, Lucide Icons.
 * **Backend:** Node.js, Express.js.
 * **Database:** SQLite (Better-SQLite3).
 * **Security:** `bcrypt`, `jsonwebtoken`, `speakeasy`, `crypto`, `qrcode`.
 
----
 
-## ⚙️ Installation & Setup
 
-### 1. Clone the Repository
-```bash
-git clone [https://github.com/your-repo/secure-document-vault.git](https://github.com/your-repo/secure-document-vault.git)
-cd secure-document-vault
 
-```
 
 ### 2. Backend Configuration
 
