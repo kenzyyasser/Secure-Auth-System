@@ -238,7 +238,7 @@ const AdminPage = () => {
             </div>
           </div>
         )}
-      </div>
+      </div>// TODO: improve error handling
 
       {/* Confirmation Modal */}
       {confirmModal.open && (
